@@ -1,4 +1,4 @@
-import { useState } from ‘react’;
+import { useState } from 'react';
 
 const TARGET_CALORIE = 1500;
 const TARGET_SALT = 7.5;
@@ -7,10 +7,10 @@ const TARGET_F = 45;
 const TARGET_C = 200;
 
 const MEAL_TYPES = [
-{ key: ‘breakfast’, label: ‘朝食’ },
-{ key: ‘lunch’, label: ‘昼食’ },
-{ key: ‘dinner’, label: ‘夕食’ },
-{ key: ‘snack’, label: ‘間食’ },
+{ key: 'breakfast', label: '朝食' },
+{ key: 'lunch', label: '昼食' },
+{ key: 'dinner', label: '夕食' },
+{ key: 'snack', label: '間食' },
 ];
 
 function Ring({ value, target }) {
@@ -45,7 +45,7 @@ style={{ transition: 'stroke-dashoffset 0.6s ease, stroke 0.3s ease' }}
 );
 }
 
-function MacroBar({ label, value, target, unit = ‘g’ }) {
+function MacroBar({ label, value, target, unit = 'g' }) {
 const pct = Math.min((value / target) * 100, 100);
 const over = value > target;
 return (
@@ -74,7 +74,7 @@ transition: 'width 0.4s ease'
 export default function DietTracker() {
 const [meals, setMeals] = useState([]);
 const [form, setForm] = useState({
-type: ‘breakfast’, name: ‘’, calorie: ‘’, protein: ‘’, fat: ‘’, carb: ‘’, salt: ‘’
+type: 'breakfast', name: '', calorie: '', protein: '', fat: '', carb: '', salt: ''
 });
 const [advice, setAdvice] = useState(null);
 const [loadingAdvice, setLoadingAdvice] = useState(false);
@@ -96,8 +96,8 @@ const diff = totals.calorie - TARGET_CALORIE;
 
 function addMeal() {
 if (!form.name || !form.calorie) return;
-setMeals([…meals, { …form, id: Date.now() }]);
-setForm({ type: form.type, name: ‘’, calorie: ‘’, protein: ‘’, fat: ‘’, carb: ‘’, salt: ‘’ });
+setMeals([...meals, { ...form, id: Date.now() }]);
+setForm({ type: form.type, name: '', calorie: '', protein: '', fat: '', carb: '', salt: '' });
 setAdvice(null);
 clearPhoto();
 }
@@ -123,26 +123,23 @@ width = maxSide;
 width = Math.round((width * maxSide) / height);
 height = maxSide;
 }
-const canvas = document.createElement(‘canvas’);
+const canvas = document.createElement('canvas');
 canvas.width = width;
 canvas.height = height;
-const ctx = canvas.getContext(‘2d’);
+const ctx = canvas.getContext('2d');
 ctx.drawImage(img, 0, 0, width, height);
-const resizedDataUrl = canvas.toDataURL(‘image/jpeg’, 0.85);
+const resizedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
 
-```
 setPhotoPreview(resizedDataUrl);
 await analyzePhoto(resizedDataUrl, 'image/jpeg');
-```
-
 };
 img.onerror = () => {
-setAnalyzeError(‘画像の読み込みに失敗しました。別の写真で試してみてね。’);
+setAnalyzeError('画像の読み込みに失敗しました。別の写真で試してみてね。');
 };
 img.src = reader.result;
 };
 reader.onerror = () => {
-setAnalyzeError(‘画像の読み込みに失敗しました。別の写真で試してみてね。’);
+setAnalyzeError('画像の読み込みに失敗しました。別の写真で試してみてね。');
 };
 reader.readAsDataURL(file);
 
@@ -152,35 +149,35 @@ async function analyzePhoto(dataUrl, mimeType) {
 setAnalyzing(true);
 setAnalyzeError(null);
 try {
-const base64Data = dataUrl.split(’,’)[1];
+const base64Data = dataUrl.split(',')[1];
 
 const prompt = `この食事写真を見て、料理名とおおよその栄養価を推定してください。日本の一般的な食品として妥当な数値にしてください。写真から油や調味料の量が読み取りにくい場合は、一般的な調理法を仮定して構いません。
 
 もし写真に割り箸・リモコン・スマートフォンなど、大きさの分かるものが一緒に写っていたら、それをサイズの目安として使い、料理の分量をより正確に推定してください。
 
-重要: calorie, protein, fat, carb, salt は必ず単一の数値にしてください。“180-220”のような範囲や、“約”などの文字列は使わず、あなたの最も妥当な推定値1つだけを数値で出してください。
+重要: calorie, protein, fat, carb, salt は必ず単一の数値にしてください。"180-220"のような範囲や、"約"などの文字列は使わず、あなたの最も妥当な推定値1つだけを数値で出してください。
 
 以下のJSON形式のみを出力し、それ以外の文章（説明・前置き・コードブロック記号）は一切含めないでください:
-{“name”: “料理名”, “calorie”: 数値, “protein”: 数値, “fat”: 数値, “carb”: 数値, “salt”: 数値}`;
+{"name": "料理名", "calorie": 数値, "protein": 数値, "fat": 数値, "carb": 数値, "salt": 数値}`;
 
-const response = await fetch(“https://api.anthropic.com/v1/messages”, {
-method: “POST”,
-headers: { “Content-Type”: “application/json” },
+const response = await fetch("https://api.anthropic.com/v1/messages", {
+method: "POST",
+headers: { "Content-Type": "application/json" },
 body: JSON.stringify({
-model: “claude-sonnet-4-6”,
+model: "claude-sonnet-4-6",
 max_tokens: 500,
 messages: [{
-role: “user”,
+role: "user",
 content: [
-{ type: “image”, source: { type: “base64”, media_type: mimeType || “image/jpeg”, data: base64Data } },
-{ type: “text”, text: prompt }
+{ type: "image", source: { type: "base64", media_type: mimeType || "image/jpeg", data: base64Data } },
+{ type: "text", text: prompt }
 ]
 }],
 })
 });
 
 if (!response.ok) {
-let bodyText = ‘’;
+let bodyText = '';
 try { bodyText = await response.text(); } catch (_) {}
 setAnalyzeError(`HTTPエラー ${response.status}: ${bodyText.slice(0, 300)}`);
 return;
@@ -194,30 +191,30 @@ setAnalyzeError(`レスポンスのJSON変換に失敗: ${parseErr?.message || S
 return;
 }
 
-if (data?.type === ‘error’) {
+if (data?.type === 'error') {
 setAnalyzeError(`APIエラー: ${data.error?.message || JSON.stringify(data.error)}`);
 return;
 }
 
-const text = data?.content?.find(b => b.type === ‘text’)?.text;
+const text = data?.content?.find(b => b.type === 'text')?.text;
 if (!text) {
 setAnalyzeError(`解析に失敗（テキスト無し）。返答: ${JSON.stringify(data).slice(0, 300)}`);
 return;
 }
 
-const cleaned = text.replace(/`json|`/g, ‘’).trim();
+const cleaned = text.replace(/`json|`/g, '').trim();
 const jsonMatch = cleaned.match(/{[\s\S]*}/);
 if (!jsonMatch) {
 setAnalyzeError(`解析に失敗（JSON無し）。返答: ${text.slice(0, 300)}`);
-const nameMatch = cleaned.match(/“name”\s*:\s*”([^”]+)”/);
-if (nameMatch) setForm(f => ({ …f, name: nameMatch[1] }));
+const nameMatch = cleaned.match(/"name"\s*:\s*"([^"]+)"/);
+if (nameMatch) setForm(f => ({ ...f, name: nameMatch[1] }));
 return;
 }
 
 const toNumber = (v) => {
-if (typeof v === ‘number’) return v;
-if (typeof v === ‘string’) {
-const n = parseFloat(v.replace(/[^0-9.]/g, ‘’));
+if (typeof v === 'number') return v;
+if (typeof v === 'string') {
+const n = parseFloat(v.replace(/[^0-9.]/g, ''));
 return isNaN(n) ? null : n;
 }
 return null;
@@ -231,7 +228,7 @@ const carb = toNumber(parsed.carb);
 const salt = toNumber(parsed.salt);
 
 setForm(f => ({
-…f,
+...f,
 name: parsed.name ?? f.name,
 calorie: calorie != null ? String(Math.round(calorie)) : f.calorie,
 protein: protein != null ? String(protein) : f.protein,
@@ -241,7 +238,7 @@ salt: salt != null ? String(salt) : f.salt,
 }));
 
 if (calorie == null) {
-setAnalyzeError(‘料理名は分かりましたが、数値の読み取りに失敗しました。手入力してね。’);
+setAnalyzeError('料理名は分かりましたが、数値の読み取りに失敗しました。手入力してね。');
 } else {
 setAnalyzed(true);
 }
@@ -273,7 +270,7 @@ try {
 const mealSummary = meals.map(m => {
 const t = MEAL_TYPES.find(t => t.key === m.type)?.label || m.type;
 return `${t}: ${m.name}（${m.calorie}kcal, P${m.protein || 0}g/F${m.fat || 0}g/C${m.carb || 0}g, 塩分${m.salt || 0}g）`;
-}).join(’\n’);
+}).join('\n');
 
 const prompt = `あなたはダイエットをサポートする栄養コーチです。以下の今日の食事記録を見て、200字程度の簡潔で実用的なアドバイスを日本語で書いてください。堅苦しくなく、親しみやすい口調で。次の食事で何を食べるべきか、具体的な食品名を挙げて提案してください。
 
@@ -283,7 +280,7 @@ const prompt = `あなたはダイエットをサポートする栄養コーチ�
 タンパク質目標: ${TARGET_P}g / 脂質目標: ${TARGET_F}g / 炭水化物目標: ${TARGET_C}g
 
 【現在の合計】
-カロリー: ${totals.calorie}kcal（目標との差: ${diff > 0 ? ‘+’ : ‘’}${diff}kcal）
+カロリー: ${totals.calorie}kcal（目標との差: ${diff > 0 ? '+' : ''}${diff}kcal）
 タンパク質: ${totals.protein.toFixed(1)}g
 脂質: ${totals.fat.toFixed(1)}g
 炭水化物: ${totals.carb.toFixed(1)}g
@@ -294,25 +291,25 @@ ${mealSummary}
 
 アドバイスのみを出力してください。前置きや挨拶は不要です。`;
 
-const response = await fetch(“https://api.anthropic.com/v1/messages”, {
-method: “POST”,
-headers: { “Content-Type”: “application/json” },
+const response = await fetch("https://api.anthropic.com/v1/messages", {
+method: "POST",
+headers: { "Content-Type": "application/json" },
 body: JSON.stringify({
-model: “claude-sonnet-4-6”,
+model: "claude-sonnet-4-6",
 max_tokens: 1000,
-messages: [{ role: “user”, content: prompt }],
+messages: [{ role: "user", content: prompt }],
 })
 });
 
 const data = await response.json();
-const text = data?.content?.find(b => b.type === ‘text’)?.text;
+const text = data?.content?.find(b => b.type === 'text')?.text;
 if (text) {
 setAdvice(text);
 } else {
-setAdviceError(‘アドバイスの取得に失敗しました。もう一度試してね。’);
+setAdviceError('アドバイスの取得に失敗しました。もう一度試してね。');
 }
 } catch (e) {
-setAdviceError(‘通信エラーが発生しました。もう一度試してね。’);
+setAdviceError('通信エラーが発生しました。もう一度試してね。');
 } finally {
 setLoadingAdvice(false);
 }
@@ -324,7 +321,6 @@ return (
 <div className="min-h-screen bg-[#F7F5F0] text-[#2F2A24]" style={{ fontFamily: "'Zen Kaku Gothic New', 'Hiragino Sans', sans-serif" }}>
 <div className="max-w-md mx-auto px-5 pt-8 pb-24">
 
-```
 <header className="mb-6">
   <div className="text-xs tracking-widest text-[#8A8272] mb-1">DAILY BALANCE</div>
   <h1 className="text-2xl font-bold text-[#2F2A24]">今日のカロリー収支</h1>
@@ -522,7 +518,6 @@ return (
     </div>
   )}
 </div>
-```
 
   </div>
 </div>
