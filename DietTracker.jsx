@@ -149,101 +149,39 @@ async function analyzePhoto(dataUrl, mimeType) {
 setAnalyzing(true);
 setAnalyzeError(null);
 try {
-const base64Data = dataUrl.split(',')[1];
+const imageBase64 = dataUrl.split(',')[1];
 
-const prompt = `この食事写真を見て、料理名とおおよその栄養価を推定してください。日本の一般的な食品として妥当な数値にしてください。写真から油や調味料の量が読み取りにくい場合は、一般的な調理法を仮定して構いません。
-
-もし写真に割り箸・リモコン・スマートフォンなど、大きさの分かるものが一緒に写っていたら、それをサイズの目安として使い、料理の分量をより正確に推定してください。
-
-重要: calorie, protein, fat, carb, salt は必ず単一の数値にしてください。"180-220"のような範囲や、"約"などの文字列は使わず、あなたの最も妥当な推定値1つだけを数値で出してください。
-
-以下のJSON形式のみを出力し、それ以外の文章（説明・前置き・コードブロック記号）は一切含めないでください:
-{"name": "料理名", "calorie": 数値, "protein": 数値, "fat": 数値, "carb": 数値, "salt": 数値}`;
-
-const response = await fetch("https://api.anthropic.com/v1/messages", {
-method: "POST",
-headers: { "Content-Type": "application/json" },
-body: JSON.stringify({
-model: "claude-sonnet-4-6",
-max_tokens: 500,
-messages: [{
-role: "user",
-content: [
-{ type: "image", source: { type: "base64", media_type: mimeType || "image/jpeg", data: base64Data } },
-{ type: "text", text: prompt }
-]
-}],
-})
+const response = await fetch('/api/analyze-meal', {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({ imageBase64, mimeType: mimeType || 'image/jpeg' }),
 });
 
-if (!response.ok) {
-let bodyText = '';
-try { bodyText = await response.text(); } catch (_) {}
-setAnalyzeError(`HTTPエラー ${response.status}: ${bodyText.slice(0, 300)}`);
+let data = null;
+try { data = await response.json(); } catch (_) {}
+
+if (!response.ok || !data) {
+setAnalyzeError(data?.error || `解析に失敗しました (HTTP ${response.status})`);
 return;
 }
-
-let data;
-try {
-data = await response.json();
-} catch (parseErr) {
-setAnalyzeError(`レスポンスのJSON変換に失敗: ${parseErr?.message || String(parseErr)}`);
-return;
-}
-
-if (data?.type === 'error') {
-setAnalyzeError(`APIエラー: ${data.error?.message || JSON.stringify(data.error)}`);
-return;
-}
-
-const text = data?.content?.find(b => b.type === 'text')?.text;
-if (!text) {
-setAnalyzeError(`解析に失敗（テキスト無し）。返答: ${JSON.stringify(data).slice(0, 300)}`);
-return;
-}
-
-const cleaned = text.replace(/`json|`/g, '').trim();
-const jsonMatch = cleaned.match(/{[\s\S]*}/);
-if (!jsonMatch) {
-setAnalyzeError(`解析に失敗（JSON無し）。返答: ${text.slice(0, 300)}`);
-const nameMatch = cleaned.match(/"name"\s*:\s*"([^"]+)"/);
-if (nameMatch) setForm(f => ({ ...f, name: nameMatch[1] }));
-return;
-}
-
-const toNumber = (v) => {
-if (typeof v === 'number') return v;
-if (typeof v === 'string') {
-const n = parseFloat(v.replace(/[^0-9.]/g, ''));
-return isNaN(n) ? null : n;
-}
-return null;
-};
-
-const parsed = JSON.parse(jsonMatch[0]);
-const calorie = toNumber(parsed.calorie);
-const protein = toNumber(parsed.protein);
-const fat = toNumber(parsed.fat);
-const carb = toNumber(parsed.carb);
-const salt = toNumber(parsed.salt);
 
 setForm(f => ({
 ...f,
-name: parsed.name ?? f.name,
-calorie: calorie != null ? String(Math.round(calorie)) : f.calorie,
-protein: protein != null ? String(protein) : f.protein,
-fat: fat != null ? String(fat) : f.fat,
-carb: carb != null ? String(carb) : f.carb,
-salt: salt != null ? String(salt) : f.salt,
+name: data.name ?? f.name,
+calorie: data.calorie != null ? String(Math.round(data.calorie)) : f.calorie,
+protein: data.protein != null ? String(data.protein) : f.protein,
+fat: data.fat != null ? String(data.fat) : f.fat,
+carb: data.carb != null ? String(data.carb) : f.carb,
+salt: data.salt != null ? String(data.salt) : f.salt,
 }));
 
-if (calorie == null) {
+if (data.calorie == null) {
 setAnalyzeError('料理名は分かりましたが、数値の読み取りに失敗しました。手入力してね。');
 } else {
 setAnalyzed(true);
 }
 } catch (e) {
-setAnalyzeError(`解析エラー: ${e?.name || ''} ${e?.message || String(e)}`.trim());
+setAnalyzeError(`解析エラー: ${e?.message || String(e)}`);
 } finally {
 setAnalyzing(false);
 }
@@ -267,47 +205,30 @@ setLoadingAdvice(true);
 setAdviceError(null);
 setAdvice(null);
 try {
-const mealSummary = meals.map(m => {
-const t = MEAL_TYPES.find(t => t.key === m.type)?.label || m.type;
-return `${t}: ${m.name}（${m.calorie}kcal, P${m.protein || 0}g/F${m.fat || 0}g/C${m.carb || 0}g, 塩分${m.salt || 0}g）`;
-}).join('\n');
-
-const prompt = `あなたはダイエットをサポートする栄養コーチです。以下の今日の食事記録を見て、200字程度の簡潔で実用的なアドバイスを日本語で書いてください。堅苦しくなく、親しみやすい口調で。次の食事で何を食べるべきか、具体的な食品名を挙げて提案してください。
-
-【目標】
-1日のカロリー目標: ${TARGET_CALORIE}kcal
-塩分目標: ${TARGET_SALT}g未満
-タンパク質目標: ${TARGET_P}g / 脂質目標: ${TARGET_F}g / 炭水化物目標: ${TARGET_C}g
-
-【現在の合計】
-カロリー: ${totals.calorie}kcal（目標との差: ${diff > 0 ? '+' : ''}${diff}kcal）
-タンパク質: ${totals.protein.toFixed(1)}g
-脂質: ${totals.fat.toFixed(1)}g
-炭水化物: ${totals.carb.toFixed(1)}g
-塩分: ${totals.salt.toFixed(1)}g
-
-【今日の食事内容】
-${mealSummary}
-
-アドバイスのみを出力してください。前置きや挨拶は不要です。`;
-
-const response = await fetch("https://api.anthropic.com/v1/messages", {
-method: "POST",
-headers: { "Content-Type": "application/json" },
+const response = await fetch('/api/advice', {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify({
-model: "claude-sonnet-4-6",
-max_tokens: 1000,
-messages: [{ role: "user", content: prompt }],
-})
+meals,
+targets: {
+calorie: TARGET_CALORIE,
+salt: TARGET_SALT,
+protein: TARGET_P,
+fat: TARGET_F,
+carb: TARGET_C,
+},
+}),
 });
 
-const data = await response.json();
-const text = data?.content?.find(b => b.type === 'text')?.text;
-if (text) {
-setAdvice(text);
-} else {
-setAdviceError('アドバイスの取得に失敗しました。もう一度試してね。');
+let data = null;
+try { data = await response.json(); } catch (_) {}
+
+if (!response.ok || !data) {
+setAdviceError(data?.error || `アドバイスの取得に失敗しました (HTTP ${response.status})`);
+return;
 }
+
+setAdvice(data.advice);
 } catch (e) {
 setAdviceError('通信エラーが発生しました。もう一度試してね。');
 } finally {

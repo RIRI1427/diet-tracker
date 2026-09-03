@@ -5,6 +5,11 @@ dist-ssr
 .DS_Store
 .vercel
 
+# Environment variables (never commit API keys)
+.env
+.env.*
+!.env.example
+
 # Logs
 npm-debug.log*
 yarn-debug.log*
